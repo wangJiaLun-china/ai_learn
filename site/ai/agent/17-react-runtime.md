@@ -12,11 +12,11 @@ step: '17'
 
 ### 从"循环"到"运行时"
 
-Step03 的 ReAct 循环只有一个 while。真实的运行时（生产级框架 的 ReactLoopAgent，994 行）多了三样东西：**两级循环、上下文预算、统一的结束原因**。本场景把这三样拆出来讲。
+Step03 的 ReAct 循环只有一个 while。真实的运行时（生产级框架的 ReactLoopAgent，994 行）多了三样东西：**两级循环、上下文预算、统一的结束原因**。本场景把这三样拆出来讲。
 
 ### 机制三：步数保险丝
 
-单回合最多 6 步（生产级框架 生产值 50）。发「死循环测试」—— Mock 模型会永远发起 echo 工具调用，亲眼看到 MAX_STEPS 保险丝起跳，回合以 `TurnEndReason.MaxSteps` 收场。
+单回合最多 6 步（生产级框架里是 50）。发「死循环测试」—— Mock 模型会永远发起 echo 工具调用，亲眼看到 MAX_STEPS 保险丝起跳，回合以 `TurnEndReason.MaxSteps` 收场。
 
 ### 和场景 15 的分工
 
@@ -24,7 +24,7 @@ Step03 的 ReAct 循环只有一个 while。真实的运行时（生产级框架
 | --- | --- | --- |
 | 关注点 | 输入/输出守卫、异常兜底 | 循环结构本身：两级驱动 + 预算 + 结束原因 |
 | 回答的问题 | "跑飞了怎么办" | "循环怎么停、上下文怎么管" |
-| 对应 生产级框架 | Guard / Harness 层 | ReactLoopAgent（994 行）教学骨架 |
+| 对应生产级框架 | Guard / Harness 层 | ReactLoopAgent（994 行）教学骨架 |
 
 消化完这两个场景，再去看 生产级框架 源码：ToolDefinition（70 行）→ ToolRegistry → ReactLoopAgent → ToolCallExecutor（763 行并行调度），就是从玩具到工业级的完整阶梯。
 
@@ -62,7 +62,7 @@ int tokens = history.stream().mapToInt(m -> m.content().length() / 4).sum();
 while (tokens > BUDGET && history.size() > KEEP_MIN) history.remove(0);
 ```
 
-历史跨对话累积，多聊几轮后轨迹里会出现「上下文裁剪」事件 —— 这就是 生产级框架 在每次调模型前做的事（它还叠了 LLM 摘要压缩，见场景 05 与 14）。
+历史跨对话累积，多聊几轮后轨迹里会出现「上下文裁剪」事件 —— 这就是生产级框架在每次调模型前做的事（它还叠了 LLM 摘要压缩，见场景 05 与 18）。
 
 ## ToyAgent vs ToyAgentScope {#compare}
 

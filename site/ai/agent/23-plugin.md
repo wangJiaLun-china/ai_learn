@@ -15,12 +15,12 @@ step: '23'
 工具写死在宿主里，每加一个能力都要重新编译、重新部署。**插件机制把「能力」变成运行时可安装、可卸载的包**：第三方作者按契约实现一个接口，宿主加载后模型立刻「看见」新工具。
 
 ::: tip 💡 一句话理解
-插件 = 工具的 JAR 包。生产级框架 的整个插件生态（安装 / 激活 / 运行 / 管理 / 查询五条流水线 + maven archetype 脚手架）都建立在这句话上。
+插件 = 工具的 JAR 包。生产级框架的整个插件生态（安装 / 激活 / 运行 / 管理 / 查询五条流水线 + maven archetype 脚手架）都建立在这句话上。
 :::
 
-### 生产级框架 的四层设计
+### 生产级框架的四层设计
 
-| 层次 | 生产级框架 组件 | 职责 |
+| 层次 | 生产级框架组件 | 职责 |
 | --- | --- | --- |
 | 契约 | `JavaHarnessPlugin` + `PluginManifest` | onStart/onStop/tools() + META-INF/plugin.yaml 声明入口 |
 | 加载 | `JavaPluginLoader` | 独立 URLClassLoader 隔离加载；entrypoint 优先，Java SPI 兜底 |

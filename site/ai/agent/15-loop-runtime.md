@@ -27,7 +27,7 @@ step: '15'
 | 接入层 | 鉴权、限流 | HTTP 路由 |
 | 守卫层 | 输入/输出安全 | ① 与 ③ |
 | 编排层 | Loop、状态、重试 | ② |
-| 工具层 | 执行与隔离（沙箱） | safeExecute |
+| 工具层 | 执行与隔离（沙箱） | `execute` + try/catch |
 | 模型层 | 推理服务 | ChatModel |
 
 ::: tip 💡 面试考点
@@ -60,7 +60,12 @@ public String chat(String input) {
             return guard(fin);
         }
         // 工具异常不拖垮循环
-        String obs = safeExecute(action, args);
+        String obs;
+        try {
+            obs = execute(action, args);
+        } catch (Exception e) {
+            obs = "工具执行异常: " + e.getMessage();
+        }
         messages.add(Message.user("Observation: " + obs));
     }
     return "已达最大步数，强制终止";           // 保险丝熔断

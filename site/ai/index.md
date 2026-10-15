@@ -76,3 +76,9 @@ public interface Agent {
 - **ch23-27 展望篇** → 读完 26 个场景再回头看会非常轻松
 
 每篇场景笔记页末的「对应教程」列出具体章节。
+
+## 阅读约定 {#conventions}
+
+- **代码片段是简化示意**：场景笔记里的代码为讲清思路做了删减（省略轨迹记录、异常细节等），完整实现以页底「对应源码」链接为准。
+- **「试一试」「轨迹」**：指本地运行 ToyAgent / ToyAgentScope 自带网页（`http://localhost:8099`）时，在网页里提问并观察右侧的执行轨迹。启动方式见仓库 [README](https://github.com/wangJiaLun-china/ai_learn#启动方式)。
+- **「生产级框架」**：ToyAgent 设计时参照的一套生产级 Agent 框架；文中提到的类名（如 `ReactLoopAgent`、`HookService`）只作对照，不在本仓库中。

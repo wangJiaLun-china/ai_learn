@@ -15,7 +15,7 @@ step: '24'
 审计、脱敏、风控这些需求有一个共同点：**横切在所有工具上**。写进每个工具？改一次规则要改 N 处。钩子把它们抽出来挂在生命周期上 —— **挂钩即生效，摘钩即消失**，工具作者对此无感知。
 
 ::: tip 💡 一句话理解
-钩子 = 工具调用链上的 AOP。生产级框架 的 HookService 管挂载与触发，HookMatcher 管「挂在哪类工具上」，HookOutputMerger 管「多条 after 钩子按序合并输出」。
+钩子 = 工具调用链上的 AOP。生产级框架的 HookService 管挂载与触发，HookMatcher 管「挂在哪类工具上」，HookOutputMerger 管「多条 after 钩子按序合并输出」。
 :::
 
 ### 两个挂载点，三种干预方式
@@ -50,7 +50,7 @@ hooks.add(new Hook("风控-敏感外发", "before", List.of("send_sms"), (tool, 
     payload.contains("密码") ? "DENY:敏感信息禁止外发" : null));
 
 hooks.add(new Hook("脱敏", "after", List.of("*"), (tool, payload) ->
-    Pattern.compile("(1[3-9])\d{9}").matcher(payload).replaceAll("$1*********")));
+    Pattern.compile("(1[3-9])\\d{9}").matcher(payload).replaceAll("$1*********")));
 
 // 管线：before 任何一条拦截即终止；after 按注册顺序依次加工（HookOutputMerger）
 ```

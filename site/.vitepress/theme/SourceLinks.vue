@@ -19,7 +19,7 @@ const links = computed(() => {
 
 <template>
   <div v-if="links.length" class="source-links">
-    <p class="title">📂 对应源码</p>
+    <p class="title">📂 对应源码 <span class="hint">（文中代码为简化示意，以源码为准）</span></p>
     <ul>
       <li v-for="l in links" :key="l.name"><a :href="l.url" target="_blank" rel="noreferrer">{{ l.name }} · step{{ frontmatter.step }}</a></li>
     </ul>
@@ -29,5 +29,6 @@ const links = computed(() => {
 <style scoped>
 .source-links { margin-top: 32px; padding: 12px 16px; border-radius: 8px; background: var(--vp-c-bg-soft); }
 .title { margin: 0 0 4px; font-weight: 600; }
+.hint { font-weight: 400; font-size: 13px; color: var(--vp-c-text-2); }
 ul { margin: 0; padding-left: 20px; }
 </style>

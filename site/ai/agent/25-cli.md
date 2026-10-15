@@ -40,18 +40,20 @@ REPL 只是 Agent.chat 的 while 循环；单命令 -p 模式只是调用一次�
 
 ```java
 // 终端形态 = Agent.chat 的 while 循环（完整实现见 CliAgent.java）
-BufferedReader in = new BufferedReader(new InputStreamReader(System.in));
-while (true) {
-    System.out.print("you› ");
-    String line = in.readLine();
-    if (line == null || line.equalsIgnoreCase("exit")) break;
-    if (line.isBlank()) continue;
-    System.out.println("agent› " + agent.chat(line));   // 灵魂不变
+try (Scanner sc = new Scanner(System.in, StandardCharsets.UTF_8)) {
+    while (true) {
+        System.out.print("你> ");
+        if (!sc.hasNextLine()) break;
+        String line = sc.nextLine().trim();
+        if (line.isEmpty()) continue;
+        if ("exit".equalsIgnoreCase(line) || "quit".equalsIgnoreCase(line)) break;
+        System.out.println("Agent> " + agent.chat(line));   // 灵魂不变
+    }
 }
 
 // 手脚换成沙箱执行器：ProcessBuilder 按空格拆分，不经 shell
 // （无管道/重定向注入面），四层防御复用 Step21
-ProcessBuilder pb = new ProcessBuilder(command.split("\s+"));
+ProcessBuilder pb = new ProcessBuilder(command.split("\\s+"));
 pb.directory(workdir);   // 受限工作区 = 沙箱第④层
 Process proc = pb.start();
 ```
