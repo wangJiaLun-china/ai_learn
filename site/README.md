@@ -2,6 +2,8 @@
 
 线上地址：https://learn.wangjialun.top （VitePress，push 到 main 且改动 `site/` 后由 GitHub Actions 自动发布）
 
+自动发布依赖三个仓库 Secret：`DEPLOY_SSH_KEY`（部署私钥）、`DEPLOY_HOST`（服务器地址）、`DEPLOY_USER`（登录用户）。
+
 ```bash
 cd site
 npm i
