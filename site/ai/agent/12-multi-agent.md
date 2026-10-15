@@ -1,0 +1,19 @@
+---
+step: '12'
+---
+
+# 12 多智能体
+
+> 分组：协作与派遣
+
+## 核心概念 {#concept}
+
+（待补充）
+
+## 实现要点 {#impl}
+
+（待补充）
+
+## ToyAgent vs ToyAgentScope {#compare}
+
+（待补充）

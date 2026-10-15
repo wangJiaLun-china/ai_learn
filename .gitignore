@@ -15,3 +15,8 @@ practice/data/
 .idea/
 *.iml
 .DS_Store
+
+# 知识站
+site/node_modules/
+site/.vitepress/dist/
+site/.vitepress/cache/

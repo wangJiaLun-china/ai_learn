@@ -1,0 +1,42 @@
+name: Deploy site
+
+on:
+  push:
+    branches: [main]
+    paths: ['site/**', '.github/workflows/deploy-site.yml']
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-site
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: site
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # lastUpdated 需要完整 git 历史
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - run: npm ci
+      - run: npm run docs:build
+
+      - name: Rsync to server
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          # 服务器主机公钥（公开信息，用于防中间人）
+          echo '66.154.119.216 ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC9bBIZ0nws6jcFB6Q3/P1MVpFHVbpjYL2eMl55C963wjvC0Wt12H1dy+cIFZdgWTj4qHJ8lzm8d1vLwKzVSCaN5lU8+debmupFNtGRaKOXtu0tfupxZ0atwEsXE1zTIsIpjTlt26fHVZVuIkM+SdZayrIeCDuYfc+zxQArLsoW9AOsqRtm7Jawmm/KMiIyfrp4b3gnqQ9PQEGDGdb2WpNIVUAgxE2JjTPie7fgh0A1euVOHtd3CepgE4qirgqWMNCQ/8S/vrzjbj+BQReLPEXpeWFAPatuc8C/xLU2Y+wvZX047ge+pPnuieeQHLafdKlm9+0Zo+e/PMgAu+fhXYenHFAgzNH3xxk2FMfumzKFGLqikFS7mPZ8ghKRFSrW9+4UPkkL4Som5eyU/I5pa9/J2/Ch8wQOJrC9FtjdTPsVSH+QB7ySdN7wSYptKO66jdJbl246r/rCNu9dfX1zcvNMLFvbYEzwpMwSHM3FuZ11RvTWXSGzHjzOyZOprqX21tU=' > ~/.ssh/known_hosts
+          rsync -az --delete -e "ssh -i ~/.ssh/deploy -o IdentitiesOnly=yes" \
+            .vitepress/dist/ deploy@66.154.119.216:/var/www/learn/
