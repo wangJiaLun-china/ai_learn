@@ -4,14 +4,16 @@
 
 ## 三种做法 {#approaches}
 
-| 做法 | 原理 | 稳定性 |
+| 做法 | 原理 | 保证什么 |
 | --- | --- | --- |
-| 提示词约束 | 「只输出 JSON，格式如下……」+ 示例 | 最弱，可能夹带解释或代码围栏 |
-| JSON Mode | `response_format: {"type": "json_object"}`，保证是合法 JSON | 语法有保证，字段不保证 |
-| Schema 约束 | `json_schema` 严格模式，或把 schema 声明成一个工具并强制调用 | 最强，字段和类型都有保证 |
+| 提示词约束 | 「只输出 JSON，格式如下……」+ 示例 | 什么都不保证，可能夹带解释或代码围栏 |
+| JSON Mode | OpenAI `response_format: {"type": "json_object"}` | 只保证是合法 JSON，字段不保证；**消息里必须明确要求输出 JSON**，否则模型不会按 JSON 输出 |
+| Structured Outputs | OpenAI `response_format: {"type": "json_schema", ...}`；Anthropic `output_config.format`；或把 schema 声明成工具并开启 `strict` | 输出符合你给的 JSON Schema |
+
+OpenAI 官方把 JSON Mode 称为「较旧的方式」，支持的模型上优先用 `json_schema`。注意：OpenAI 兼容服务未必完整支持 `json_schema`，ToyAgentScope 实测就遇到过（见下文）。
 
 ::: info 🚀 用工具调用做结构化输出
-很多框架的通用做法：把目标结构定义成一个「工具」，用 `tool_choice` 强制模型调用它，工具参数就是你要的结构。ToyAgentScope 配置了 `nativeStructuredOutput(false)` 走的就是这条路（见 [06 意图路由](../agent/06-intent-router#compare)）。
+很多框架的通用做法：把目标结构定义成一个「工具」，用 `tool_choice` 强制模型调用它，工具参数就是你要的结构（推理模型上强制调用可能不被支持，见 [Function Calling](./04-function-calling#tool-choice)）。ToyAgentScope 配置了 `nativeStructuredOutput(false)` 走的就是这条路（见 [06 意图路由](../agent/06-intent-router#compare)）。
 :::
 
 ## 解析兜底 {#parsing}
@@ -29,3 +31,8 @@
 - **信息抽取**：从文本中抽出实体、字段
 - **规划**：输出步骤列表交给执行器（[12 多智能体](../agent/12-multi-agent)）
 - **ReAct 文本协议**：每轮输出 thought / action / final（[03 ReAct](../agent/03-react)）
+
+## 资料 {#links}
+
+- [OpenAI：Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs)
+- [Anthropic：Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)

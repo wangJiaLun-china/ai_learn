@@ -20,13 +20,14 @@ Authorization: Bearer sk-xxx
 }
 ```
 
-响应取 `choices[0].message.content`，用量在 `usage` 里。Anthropic Messages API 结构类似，但 system 是独立字段、内容是 content block 数组。
+响应取 `choices[0].message.content`，用量在 `usage` 里。Anthropic Messages API（`POST /v1/messages`）结构类似，区别是：system 提示词是请求里的独立字段而不是一条消息；响应的 `content` 是 content block 数组（文本、工具调用、思考等各成一块）；`max_tokens` 必填。DeepSeek 同时提供 OpenAI 和 Anthropic 两种格式的接口。
 
 ## 消息角色 {#roles}
 
 | 角色 | 谁写的 | 用途 |
 | --- | --- | --- |
 | `system` | 开发者 | 角色、背景、约束（[02 提示词](../agent/02-prompt)） |
+| `developer` | 开发者 | OpenAI 在 o1 及之后的模型上用它取代 `system` |
 | `user` | 用户 | 本轮输入 |
 | `assistant` | 模型 | 历史回复；也可能是 `tool_calls` |
 | `tool` | 程序 | 工具执行结果，用 `tool_call_id` 对应调用 |
@@ -49,7 +50,7 @@ data: [DONE]
 
 ## 错误与重试 {#errors}
 
-- `429` 限流 / `5xx` 服务端错误：指数退避重试；
+- `429` 限流 / `5xx` 服务端错误：指数退避重试（官方 SDK 一般内置了有限次数的自动重试）；
 - `400` 上下文超长 / 参数非法：重试无用，要裁剪上下文或修请求；
 - 超时：设置连接与读取超时，流式场景用「两个分块之间的最大间隔」判断。
 
@@ -58,3 +59,9 @@ data: [DONE]
 - ToyAgent `llm/OpenAiChatModel.java`：手写的 `/chat/completions` 调用
 - ToyAgent `llm/MockChatModel.java`：不配 Key 时的 Mock 模型，所有场景骨架照常运转
 - [01 对话](../agent/01-chat)：最小 MVP
+
+## 资料 {#links}
+
+- [OpenAI Chat Completions API 参考](https://platform.openai.com/docs/api-reference/chat/create)
+- [Anthropic Messages API](https://platform.claude.com/docs/en/api/messages)
+- [DeepSeek API 文档](https://api-docs.deepseek.com/)

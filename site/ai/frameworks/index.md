@@ -7,12 +7,12 @@
 | | AgentScope Java | LangChain / LangGraph | Spring AI | Claude Agent SDK |
 | --- | --- | --- | --- | --- |
 | 语言 | Java | Python / JS（Java 生态有 LangChain4j） | Java（Spring Boot） | Python / TypeScript |
-| 定位 | 多智能体框架，事件流 + Harness | 组件库 + 图编排运行时 | Spring 风格的 AI 接入层 | Claude Code 同款的 Agent 运行时 |
+| 定位 | Agent 框架：ReActAgent + HarnessAgent + 事件流 | LangChain 是 Agent 框架（模型 / 工具抽象与集成），LangGraph 是底层编排运行时 | Spring 风格的 AI 接入层 | 以库的形式提供 Claude Code 的 Agent 能力 |
 | 编排模型 | ReActAgent 循环 + Middleware | 显式状态图（节点 + 条件边） | ChatClient + Advisor 链 | 内置 Agent Loop，配置驱动 |
 | 工具 | `@Tool` + `Toolkit` | `@tool` / Tool 类 | `@Tool` 方法 | 内置文件/命令工具 + 自定义工具 |
-| MCP | 支持 | 支持（适配器） | 支持 | 原生支持 |
-| 多智能体 | 智能体即工具、A2A | 多图 / 子图、Supervisor | 需自行编排 | 子代理（subagents） |
-| 人机协同 | 外部执行工具挂起、权限系统 | `interrupt` + checkpointer | 需自行实现 | 权限模式 + 工具审批回调 |
+| MCP | 支持 | 支持 | 支持（Boot Starter） | 支持 |
+| 多智能体 | 智能体即工具、A2A | 子图；LangChain 的 subagents / handoffs 模式 | 需自行编排 | 子代理（subagents） |
+| 人机协同 | 外部执行工具挂起、权限系统 | `interrupt` + checkpointer、`HumanInTheLoopMiddleware` | 需自行实现 | 权限模式 + `canUseTool` 审批回调 |
 | 适合 | Java 团队做完整 Agent 应用 | 需要精确控制流程的复杂编排 | 已有 Spring 应用接入 LLM 能力 | 快速做出能读写文件、跑命令的通用 Agent |
 
 ## 怎么选 {#choose}
@@ -26,13 +26,13 @@
 
 | 能力 | 手写场景 | 框架里叫什么 |
 | --- | --- | --- |
-| ReAct 循环 | [03](../agent/03-react) / [17](../agent/17-react-runtime) | ReActAgent · AgentExecutor / create_react_agent · ChatClient 工具循环 · SDK 内置 loop |
+| ReAct 循环 | [03](../agent/03-react) / [17](../agent/17-react-runtime) | ReActAgent · LangChain `create_agent` · ChatClient 工具调用 · SDK 内置 loop |
 | 工具 | [04](../agent/04-tool-call) / [11](../agent/11-tool-registry) | `@Tool` / `Toolkit` · `@tool` · `@Tool` · 自定义工具 / MCP |
-| 记忆压缩 | [05](../agent/05-memory) | compaction · memory / checkpointer · ChatMemory Advisor · 自动上下文压缩 |
+| 记忆压缩 | [05](../agent/05-memory) | compaction · `SummarizationMiddleware` + checkpointer · `MessageChatMemoryAdvisor` · 自动压缩 |
 | 工作流 | [16](../agent/16-workflow) | 显式状态机 · StateGraph · — · — |
-| 子代理 | [13](../agent/13-sub-agent) | subAgent 注册 · 子图 · — · subagents |
-| 审批 | [20](../agent/20-approval-gate) | 权限系统 · interrupt · — · 权限模式 / 回调 |
-| Hooks | [24](../agent/24-hooks) | AgentTool 装饰器 / Middleware · callbacks · Advisor · hooks |
+| 子代理 | [13](../agent/13-sub-agent) | subAgent 注册 · 子图 / subagents 模式 · — · subagents |
+| 审批 | [20](../agent/20-approval-gate) | 权限系统 · `interrupt` / `HumanInTheLoopMiddleware` · — · 权限模式 / `canUseTool` |
+| Hooks | [24](../agent/24-hooks) | AgentTool 装饰器 / Middleware · middleware / callbacks · Advisor · hooks |
 
 ## 各框架笔记 {#pages}
 

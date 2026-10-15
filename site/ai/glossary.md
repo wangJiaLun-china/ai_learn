@@ -79,7 +79,7 @@ Model Context Protocol：把工具的发现（`tools/list`）与调用（`tools/
 主 Agent 动态派遣的独立上下文执行者（spawn 全新上下文 / fork 继承上下文），只回传结论，保护主上下文。→ [13 子代理](./agent/13-sub-agent)
 
 ### A2A 智能体间协议 {#a2a}
-Agent-to-Agent：跨进程、跨团队的 Agent 协作协议，基于 Agent Card 发现能力、task_id 跟踪任务、支持异步回执。MCP 连工具，A2A 连 Agent。→ [14 A2A](./agent/14-a2a)
+Agent-to-Agent：跨进程、跨团队的 Agent 协作协议，基于 Agent Card（描述身份、能力、技能、端点和认证要求的 JSON 元数据）发现对方，用 Task 跟踪任务状态，支持流式和异步通知。MCP 连工具，A2A 连 Agent。→ [14 A2A](./agent/14-a2a)
 
 ### 工作流 Workflow {#workflow}
 用节点 + 条件边的状态机编排固定流程（LangGraph 思想），可控性强于自由 Agent Loop。→ [16 工作流](./agent/16-workflow)

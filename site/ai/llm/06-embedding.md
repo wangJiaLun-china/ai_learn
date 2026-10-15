@@ -4,7 +4,7 @@
 
 ## Embedding 是什么 {#embedding}
 
-- Embedding 模型把一段文本映射成固定维度的浮点向量（常见 512~3072 维）；
+- Embedding 模型把一段文本映射成固定维度的浮点向量；维度因模型而异，OpenAI 的 `text-embedding-3` 系列还能用 `dimensions` 参数缩短；
 - 语义相近的文本，向量方向相近；
 - 与聊天模型是**两类模型**：Embedding 模型只编码、不生成，便宜得多。
 
@@ -13,8 +13,8 @@
 | 度量 | 公式直觉 | 说明 |
 | --- | --- | --- |
 | 余弦相似度 | 两向量夹角的余弦 | 最常用，不受长度影响 |
-| 点积 | 方向 × 长度 | 向量已归一化时等价于余弦 |
-| 欧氏距离 | 两点直线距离 | 越小越近 |
+| 点积 | 方向 × 长度 | 向量已归一化时等价于余弦。OpenAI 的 embedding 默认归一化到长度 1，可直接用点积 |
+| 欧氏距离 | 两点直线距离 | 越小越近；归一化向量下与余弦的排序结果一致 |
 
 ## 检索流程 {#retrieval}
 
@@ -32,3 +32,8 @@
 
 - [07 RAG](../agent/07-rag)：用关键词重合度模拟向量相似度，骨架与生产一致
 - [08 LLM-Wiki](../agent/08-llm-wiki)：用字符 bigram 重合率做教学版相似度，生产中换成 Embedding 余弦相似度
+
+## 资料 {#links}
+
+- [OpenAI：Embeddings 指南](https://platform.openai.com/docs/guides/embeddings)
+- [OpenAI：Embeddings FAQ](https://help.openai.com/en/articles/6824809-embeddings-faq)（归一化与相似度）
