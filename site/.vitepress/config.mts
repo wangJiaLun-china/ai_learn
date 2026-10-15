@@ -1,32 +1,54 @@
 import { defineConfig } from 'vitepress'
 import { sceneGroups } from './scenes'
+import { llmPages, frameworkPages } from './sections'
 
 const repo = 'https://github.com/wangJiaLun-china/ai_learn'
 
 export default defineConfig({
   lang: 'zh-CN',
   title: '加伦的学习笔记',
-  description: '前端与 AI Agent 学习笔记',
+  description: 'AI 与 Agent 学习笔记',
   cleanUrls: true,
   srcExclude: ['README.md', 'deploy/**'],
   lastUpdated: true,
   sitemap: { hostname: 'https://learn.wangjialun.top' },
   themeConfig: {
     nav: [
-      { text: '前端', link: '/frontend/' },
-      { text: 'AI', link: '/ai/' },
+      { text: 'LLM 基础', link: '/ai/llm/01-token-context', activeMatch: '/ai/llm/' },
+      { text: 'Agent 场景', link: '/ai/agent/01-chat', activeMatch: '/ai/agent/' },
+      { text: '概念速查', link: '/ai/glossary' },
+      { text: '框架生态', link: '/ai/frameworks/', activeMatch: '/ai/frameworks/' },
     ],
+    // 按板块分侧边栏，VitePress 优先匹配更深的路径
     sidebar: {
-      '/frontend/': [
-        { text: '前端', items: [{ text: '概览', link: '/frontend/' }] },
-      ],
       '/ai/': [
-        { text: 'AI', items: [{ text: '概览', link: '/ai/' }] },
-        ...sceneGroups.map(g => ({
-          text: g.text,
-          collapsed: false,
-          items: g.items.map(s => ({ text: `${s.step} ${s.title}`, link: `/ai/agent/${s.slug}` })),
-        })),
+        {
+          text: '总览',
+          items: [
+            { text: '知识地图', link: '/ai/' },
+            { text: '概念速查', link: '/ai/glossary' },
+            { text: 'LLM 基础', link: `/ai/llm/${llmPages[0].slug}` },
+            { text: 'Agent 26 场景', link: `/ai/agent/${sceneGroups[0].items[0].slug}` },
+            { text: '框架生态', link: '/ai/frameworks/' },
+          ],
+        },
+      ],
+      '/ai/llm/': [
+        { text: 'LLM 基础', items: llmPages.map(p => ({ text: p.title, link: `/ai/llm/${p.slug}` })) },
+      ],
+      '/ai/agent/': sceneGroups.map(g => ({
+        text: g.text,
+        collapsed: false,
+        items: g.items.map(s => ({ text: `${s.step} ${s.title}`, link: `/ai/agent/${s.slug}` })),
+      })),
+      '/ai/frameworks/': [
+        {
+          text: '框架生态',
+          items: [
+            { text: '对比总览', link: '/ai/frameworks/' },
+            ...frameworkPages.map(p => ({ text: p.title, link: `/ai/frameworks/${p.slug}` })),
+          ],
+        },
       ],
     },
     search: {

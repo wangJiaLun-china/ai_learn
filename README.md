@@ -9,7 +9,7 @@
 | [ToyAgent](ToyAgent) | 手写版智能体：26 个渐进式场景，一个场景一个接口类 | Java 17 · 零依赖 · Maven | `com.wangjialun.ai.toyagent` |
 | [practice](practice) | 跟着 ToyAgent 逐个场景重写的练习代码 | Java 21 · Gradle | `com.wangjialun.ai.practice` |
 | [ToyAgentScope](ToyAgentScope) | 用 AgentScope Java 2.0.4 重做同样的 26 个场景 | Java 17 · Gradle · AgentScope | `com.wangjialun.ai.toyagentscope` |
-| [site](site) | 学习知识站 [learn.wangjialun.top](https://learn.wangjialun.top)：前端 + AI 笔记 | VitePress · Node | — |
+| [site](site) | AI 学习知识站 [learn.wangjialun.top](https://learn.wangjialun.top)：LLM 基础 + Agent 场景 + 框架生态 | VitePress · Node | — |
 
 三个 Java 工程各自独立构建，互不引用；各自的 `config.properties` 从同目录的 `config.properties.example` 复制，不入库。
 
