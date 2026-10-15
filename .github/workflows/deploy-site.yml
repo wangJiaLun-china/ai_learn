@@ -40,6 +40,6 @@ jobs:
           mkdir -p ~/.ssh
           echo "$SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
           # 服务器主机公钥（公开信息，用于防中间人）
-          echo "$DEPLOY_HOST ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC9bBIZ0nws6jcFB6Q3/P1MVpFHVbpjYL2eMl55C963wjvC0Wt12H1dy+cIFZdgWTj4qHJ8lzm8d1vLwKzVSCaN5lU8+debmupFNtGRaKOXtu0tfupxZ0atwEsXE1zTIsIpjTlt26fHVZVuIkM+SdZayrIeCDuYfc+zxQArLsoW9AOsqRtm7Jawmm/KMiIyfrp4b3gnqQ9PQEGDGdb2WpNIVUAgxE2JjTPie7fgh0A1euVOHtd3CepgE4qirgqWMNCQ/8S/vrzjbj+BQReLPEXpeWFAPatuc8C/xLU2Y+wvZX047ge+pPnuieeQHLafdKlm9+0Zo+e/PMgAu+fhXYenHFAgzNH3xxk2FMfumzKFGLqikFS7mPZ8ghKRFSrW9+4UPkkL4Som5eyU/I5pa9/J2/Ch8wQOJrC9FtjdTPsVSH+QB7ySdN7wSYptKO66jdJbl246r/rCNu9dfX1zcvNMLFvbYEzwpMwSHM3FuZ11RvTWXSGzHjzOyZOprqX21tU=' > ~/.ssh/known_hosts
+          echo "$DEPLOY_HOST ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC9bBIZ0nws6jcFB6Q3/P1MVpFHVbpjYL2eMl55C963wjvC0Wt12H1dy+cIFZdgWTj4qHJ8lzm8d1vLwKzVSCaN5lU8+debmupFNtGRaKOXtu0tfupxZ0atwEsXE1zTIsIpjTlt26fHVZVuIkM+SdZayrIeCDuYfc+zxQArLsoW9AOsqRtm7Jawmm/KMiIyfrp4b3gnqQ9PQEGDGdb2WpNIVUAgxE2JjTPie7fgh0A1euVOHtd3CepgE4qirgqWMNCQ/8S/vrzjbj+BQReLPEXpeWFAPatuc8C/xLU2Y+wvZX047ge+pPnuieeQHLafdKlm9+0Zo+e/PMgAu+fhXYenHFAgzNH3xxk2FMfumzKFGLqikFS7mPZ8ghKRFSrW9+4UPkkL4Som5eyU/I5pa9/J2/Ch8wQOJrC9FtjdTPsVSH+QB7ySdN7wSYptKO66jdJbl246r/rCNu9dfX1zcvNMLFvbYEzwpMwSHM3FuZ11RvTWXSGzHjzOyZOprqX21tU=" > ~/.ssh/known_hosts
           rsync -az --delete -e "ssh -i ~/.ssh/deploy -o IdentitiesOnly=yes" \
             .vitepress/dist/ "$DEPLOY_USER@$DEPLOY_HOST:/var/www/learn/"
