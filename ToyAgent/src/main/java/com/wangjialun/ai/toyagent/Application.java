@@ -1,0 +1,403 @@
+package com.wangjialun.ai.toyagent;
+
+import com.wangjialun.ai.toyagent.agent.Agent;
+import com.wangjialun.ai.toyagent.agent.step01.ChatAgent;
+import com.wangjialun.ai.toyagent.agent.step02.PromptAgent;
+import com.wangjialun.ai.toyagent.agent.step03.ReActAgent;
+import com.wangjialun.ai.toyagent.agent.step04.ToolCallAgent;
+import com.wangjialun.ai.toyagent.agent.step05.MemoryAgent;
+import com.wangjialun.ai.toyagent.agent.step06.RouterAgent;
+import com.wangjialun.ai.toyagent.agent.step09.McpAgent;
+import com.wangjialun.ai.toyagent.agent.step10.SkillAgent;
+import com.wangjialun.ai.toyagent.agent.step07.RagAgent;
+import com.wangjialun.ai.toyagent.agent.step12.MultiAgent;
+import com.wangjialun.ai.toyagent.agent.step15.LoopAgent;
+import com.wangjialun.ai.toyagent.agent.step16.WorkflowAgent;
+import com.wangjialun.ai.toyagent.agent.step18.FullAgent;
+import com.wangjialun.ai.toyagent.agent.step08.WikiAgent;
+import com.wangjialun.ai.toyagent.agent.step11.RegistryAgent;
+import com.wangjialun.ai.toyagent.agent.step17.RuntimeAgent;
+import com.wangjialun.ai.toyagent.agent.step19.AskAgent;
+import com.wangjialun.ai.toyagent.agent.step20.ApprovalAgent;
+import com.wangjialun.ai.toyagent.agent.step21.SandboxAgent;
+import com.wangjialun.ai.toyagent.agent.step22.EventSourcedAgent;
+import com.wangjialun.ai.toyagent.agent.step23.PluginAgent;
+import com.wangjialun.ai.toyagent.agent.step25.CliAgent;
+import com.wangjialun.ai.toyagent.agent.step13.SubagentAgent;
+import com.wangjialun.ai.toyagent.agent.step24.HooksAgent;
+import com.wangjialun.ai.toyagent.agent.step14.A2AAgent;
+import com.wangjialun.ai.toyagent.agent.step26.ScheduleAgent;
+import com.wangjialun.ai.toyagent.llm.ChatModel;
+import com.wangjialun.ai.toyagent.llm.Json;
+import com.wangjialun.ai.toyagent.llm.ModelScope;
+import com.wangjialun.ai.toyagent.llm.Models;
+import com.wangjialun.ai.toyagent.llm.OpenAiChatModel;
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
+
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Executors;
+
+/**
+ * ToyAgent 服务入口。
+ * <p>
+ * 使用 JDK 自带 HttpServer（零依赖）做三件事：
+ * 1. 托管 web/ 目录下的静态页面（测试界面）；
+ * 2. 暴露 /api/{stepId}/chat 与 /api/{stepId}/reset，把 26 个场景接入页面；
+ * 3. 模型管理：配置保存在各人浏览器 localStorage，随请求携带、线程级生效，互不覆盖。
+ * <p>
+ * 启动：java com.wangjialun.ai.toyagent.Application（默认端口 8099，可用 TOY_AGENT_PORT 覆盖）
+ */
+public final class Application {
+
+    /**
+     * 场景工厂注册表，模型切换时整体原子重建。
+     * <p>
+     * 公网多用户隔离（小程序/多人共用服务）：每个场景不再持有全局单例，
+     * 而是保存「构造方法」，按请求头 X-Scope-Id（浏览器/小程序的会话标识）
+     * 为每个会话单独实例化一份有状态场景（记忆、审批挂起、事件流等互不串台）。
+     */
+    private static volatile Map<String, java.util.function.Supplier<Agent>> factories = new LinkedHashMap<>();
+
+    /** 会话级场景实例缓存：scopeId -> (stepId -> Agent 实例)。 */
+    private static final Map<String, Map<String, Agent>> sessions = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** 会话缓存上限，超出后整体清空（教学玩具，宁可重建也不无界膨胀）。 */
+    private static final int MAX_SESSIONS = 512;
+
+    /** 无 X-Scope-Id 请求头时的默认会话（如 curl 直连调试）。 */
+    private static final String DEFAULT_SCOPE = "default";
+
+    public static void main(String[] args) throws IOException {
+        rebuildAgents();
+
+        int port = Integer.parseInt(System.getenv().getOrDefault("TOY_AGENT_PORT", "8099"));
+        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+        server.setExecutor(Executors.newFixedThreadPool(8));
+        server.createContext("/", Application::dispatch);
+        server.start();
+
+        System.out.println("==============================================");
+        System.out.println("  ToyAgent v1.0  启动成功");
+        System.out.println("  模型模式: " + (Models.isRealModel() ? "真实模型 " + Models.modelName() : "Mock 模型（未配置 api-key）"));
+        System.out.println("  测试页面: http://localhost:" + port);
+        System.out.println("==============================================");
+    }
+
+    /** 按当前配置装配 26 个场景工厂：真实模型优先，无 Key 则装配 Mock 模型；每个模型再包一层浏览器级作用域。 */
+    private static synchronized void rebuildAgents() {
+        ChatModel real = Models.openAiOrNull();
+        Map<String, java.util.function.Supplier<Agent>> map = new LinkedHashMap<>();
+        map.put("step01", () -> new ChatAgent.Impl(scoped("step01", real)));
+        map.put("step02", () -> new PromptAgent.Impl(scoped("step02", real)));
+        map.put("step03", () -> new ReActAgent.Impl(scoped("step03", real)));
+        map.put("step04", () -> new ToolCallAgent.Impl(scoped("step04", real)));
+        map.put("step05", () -> new MemoryAgent.Impl(scoped("step05", real)));
+        map.put("step06", () -> new RouterAgent.Impl(scoped("step06", real)));
+        map.put("step09", () -> new McpAgent.Impl(scoped("step09", real)));
+        map.put("step10", () -> new SkillAgent.Impl(scoped("step10", real)));
+        map.put("step07", () -> new RagAgent.Impl(scoped("step07", real)));
+        map.put("step12", () -> new MultiAgent.Impl(scoped("step12", real)));
+        map.put("step15", () -> new LoopAgent.Impl(scoped("step15", real)));
+        map.put("step16", () -> new WorkflowAgent.Impl(scoped("step16", real)));
+        map.put("step18", () -> new FullAgent.Impl(scoped("step18", real)));
+        map.put("step08", () -> new WikiAgent.Impl(scoped("step08", real)));
+        map.put("step11", () -> new RegistryAgent.Impl(scoped("step11", real)));
+        map.put("step17", () -> new RuntimeAgent.Impl(scoped("step17", real)));
+        map.put("step19", () -> new AskAgent.Impl(scoped("step19", real)));
+        map.put("step20", () -> new ApprovalAgent.Impl(scoped("step20", real)));
+        map.put("step21", () -> new SandboxAgent.Impl(scoped("step21", real)));
+        map.put("step22", () -> new EventSourcedAgent.Impl(scoped("step22", real)));
+        map.put("step23", () -> new PluginAgent.Impl(scoped("step23", real)));
+        map.put("step25", () -> new CliAgent.Impl(scoped("step25", real)));
+        map.put("step13", () -> new SubagentAgent.Impl(scoped("step13", real)));
+        map.put("step24", () -> new HooksAgent.Impl(scoped("step24", real)));
+        map.put("step14", () -> new A2AAgent.Impl(scoped("step14", real)));
+        map.put("step26", () -> new ScheduleAgent.Impl(scoped("step26", real)));
+        factories = map;
+        sessions.clear();
+        System.out.println("[ToyAgent] 场景已装配，模型模式: " + (Models.isRealModel() ? Models.modelName() : "mock"));
+    }
+
+    /** 服务端默认模型（真实优先，否则 Mock）+ 浏览器级作用域包装。 */
+    private static ChatModel scoped(String stepId, ChatModel real) {
+        ChatModel fallback = real != null ? real : Models.mock(stepId);
+        return ModelScope.wrap(fallback, stepId);
+    }
+
+    // ------------------------------------------------------------------ 路由
+
+    private static void dispatch(HttpExchange exchange) {
+        String path = exchange.getRequestURI().getPath();
+        try {
+            if (path.startsWith("/api/")) {
+                handleApi(exchange, path);
+            } else {
+                handleStatic(exchange, path);
+            }
+        } catch (Exception e) {
+            try {
+                respond(exchange, 500, errorJson("服务内部错误: " + e.getMessage()));
+            } catch (IOException ignored) {
+                // 响应已不可写，忽略
+            }
+        } finally {
+            exchange.close();
+        }
+    }
+
+    /**
+     * API 路由：
+     * POST /api/{stepId}/chat | POST /api/{stepId}/reset
+     * GET  /api/config | GET /api/model | POST /api/model | POST /api/model/test | POST /api/model/mock
+     */
+    private static void handleApi(HttpExchange exchange, String path) throws IOException {
+        String method = exchange.getRequestMethod();
+
+        if (path.equals("/api/config") && "GET".equals(method)) {
+            respond(exchange, 200, Json.write(Map.of(
+                    "mode", Models.isRealModel() ? "real" : "mock",
+                    "model", Models.modelName())));
+            return;
+        }
+
+        // ---------------- 模型管理 ----------------
+        if (path.equals("/api/model")) {
+            if ("GET".equals(method)) {
+                Map<String, Object> m = Json.obj();
+                m.put("mode", Models.isRealModel() ? "real" : "mock");
+                m.put("baseUrl", Models.baseUrl());
+                m.put("apiKeyMasked", Models.maskedKey());
+                m.put("model", Models.isRealModel() ? Models.modelName() : "");
+                respond(exchange, 200, Json.write(m));
+                return;
+            }
+            if ("POST".equals(method)) {
+                String body = readBody(exchange);
+                try {
+                    Object req = Json.parse(body);
+                    Models.update(Json.str(req, "baseUrl"), Json.str(req, "apiKey"), Json.str(req, "model"));
+                    rebuildAgents();
+                    respond(exchange, 200, okJson("模型配置已保存并生效: " + Models.modelName()));
+                } catch (Exception e) {
+                    respond(exchange, 400, errorJson("配置解析失败: " + e.getMessage()));
+                }
+                return;
+            }
+        }
+
+        if (path.equals("/api/model/test") && "POST".equals(method)) {
+            String body = readBody(exchange);
+            try {
+                Object req = Json.parse(body);
+                String baseUrl = orDefault(Json.str(req, "baseUrl"), Models.baseUrl());
+                String apiKey = orDefault(Json.str(req, "apiKey"), "");
+                String model = orDefault(Json.str(req, "model"), "gpt-3.5-turbo");
+                OpenAiChatModel tester = Models.build(baseUrl, apiKey, model);
+                String reply = tester.chat(List.of(com.wangjialun.ai.toyagent.llm.Message.user("回复：pong")));
+                respond(exchange, 200, Json.write(Map.of("ok", true, "reply", reply)));
+            } catch (Exception e) {
+                respond(exchange, 200, Json.write(Map.of("ok", false, "error", String.valueOf(e.getMessage()))));
+            }
+            return;
+        }
+
+        if (path.equals("/api/model/mock") && "POST".equals(method)) {
+            Models.useMock();
+            rebuildAgents();
+            respond(exchange, 200, okJson("已切换为 Mock 演示模型"));
+            return;
+        }
+
+        // ---------------- 场景交互 ----------------
+        String[] parts = path.split("/");
+        if (parts.length != 4) {
+            respond(exchange, 404, errorJson("路径不存在: " + path));
+            return;
+        }
+        String stepId = parts[2];
+        String action = parts[3];
+        java.util.function.Supplier<Agent> factory = factories.get(stepId);
+        if (factory == null) {
+            respond(exchange, 404, errorJson("场景不存在: " + stepId));
+            return;
+        }
+        Agent agent = sessionAgent(scopeOf(exchange), stepId, factory);
+
+        if ("reset".equals(action)) {
+            agent.reset();
+            respond(exchange, 200, Json.write(Map.of("ok", true)));
+            return;
+        }
+
+        if (!"chat".equals(action) || !"POST".equals(method)) {
+            respond(exchange, 405, errorJson("不支持的请求: " + method + " " + path));
+            return;
+        }
+
+        // 解析请求体 {"message": "...", "model": {浏览器级配置，可选}}
+        String message;
+        Object body = null;
+        try {
+            body = Json.parse(readBody(exchange));
+            message = Json.str(body, "message");
+        } catch (Exception e) {
+            message = null;
+        }
+        if (message == null || message.isBlank()) {
+            respond(exchange, 400, errorJson("message 不能为空"));
+            return;
+        }
+
+        // 浏览器级模型配置：随请求携带，只对本次对话生效（多人共用服务互不覆盖）
+        bindBrowserModel(body);
+
+        long start = System.currentTimeMillis();
+        try {
+            String answer = agent.chat(message);
+            long ms = System.currentTimeMillis() - start;
+            Map<String, Object> resp = Json.obj();
+            resp.put("id", stepId);
+            resp.put("name", agent.name());
+            resp.put("answer", answer);
+            resp.put("trace", agent.trace());
+            resp.put("ms", ms);
+            respond(exchange, 200, Json.write(resp));
+        } catch (Exception e) {
+            respond(exchange, 500, errorJson("智能体执行失败: " + e.getMessage()));
+        } finally {
+            ModelScope.clear();
+        }
+    }
+
+    /** 从请求体里取浏览器携带的模型配置，绑定到当前线程；没有则保持服务端默认。 */
+    private static void bindBrowserModel(Object body) {
+        if (!(body instanceof Map<?, ?> map)) return;
+        Object m = map.get("model");
+        if (!(m instanceof Map<?, ?> cfg)) return;
+        boolean mock = Boolean.TRUE.equals(cfg.get("mock"));
+        String baseUrl = str(cfg.get("baseUrl"));
+        String model = str(cfg.get("model"));
+        if (!mock && (baseUrl == null || baseUrl.isBlank() || model == null || model.isBlank())) return;
+        ModelScope.bind(new ModelScope.Config(baseUrl, str(cfg.get("apiKey")), model, mock));
+    }
+
+    // ------------------------------------------------------------------ 会话隔离
+
+    /**
+     * 取当前请求的会话标识：请求头 X-Scope-Id（浏览器/小程序各自生成并随请求携带）。
+     * 做长度与字符白名单约束，避免恶意请求头把会话缓存撑爆。
+     */
+    private static String scopeOf(HttpExchange exchange) {
+        String raw = exchange.getRequestHeaders().getFirst("X-Scope-Id");
+        if (raw == null || raw.isBlank()) return DEFAULT_SCOPE;
+        String cleaned = raw.replaceAll("[^a-zA-Z0-9_-]", "").toLowerCase();
+        if (cleaned.isEmpty()) return DEFAULT_SCOPE;
+        return cleaned.length() > 64 ? cleaned.substring(0, 64) : cleaned;
+    }
+
+    /** 取（必要时创建）当前会话在指定场景下的独立实例；同一会话内多轮对话复用同一实例以保留记忆。 */
+    private static Agent sessionAgent(String scope, String stepId, java.util.function.Supplier<Agent> factory) {
+        if (sessions.size() > MAX_SESSIONS) {
+            sessions.clear();
+        }
+        return sessions
+                .computeIfAbsent(scope, k -> new java.util.concurrent.ConcurrentHashMap<>())
+                .computeIfAbsent(stepId, id -> factory.get());
+    }
+
+    private static String str(Object v) {
+        return v == null ? null : String.valueOf(v);
+    }
+
+    // ------------------------------------------------------------------ 静态资源
+
+    /** 页面目录。工作目录是仓库根时，静态资源在 ToyAgent/web。 */
+    private static Path locateWebRoot() {
+        Path direct = Path.of("web").toAbsolutePath().normalize();
+        if (Files.isDirectory(direct)) return direct;
+        Path nested = Path.of("ToyAgent", "web").toAbsolutePath().normalize();
+        if (Files.isDirectory(nested)) return nested;
+        return direct;
+    }
+
+    private static void handleStatic(HttpExchange exchange, String path) throws IOException {
+        if (!"GET".equals(exchange.getRequestMethod())) {
+            respond(exchange, 405, errorJson("仅支持 GET"));
+            return;
+        }
+        String rel = path.equals("/") ? "index.html" : path.substring(1);
+        Path webRoot = locateWebRoot();
+        Path target = webRoot.resolve(rel).normalize();
+
+        // 防目录穿越
+        if (!target.startsWith(webRoot) || !Files.exists(target) || Files.isDirectory(target)) {
+            // SPA 兜底：未知路径回到 index.html
+            if (!rel.contains(".")) {
+                target = webRoot.resolve("index.html");
+            } else {
+                respond(exchange, 404, "404 Not Found: " + rel);
+                return;
+            }
+        }
+
+        String contentType = switch (rel.substring(rel.lastIndexOf('.') + 1)) {
+            case "html" -> "text/html; charset=utf-8";
+            case "css" -> "text/css; charset=utf-8";
+            case "js" -> "application/javascript; charset=utf-8";
+            case "json" -> "application/json; charset=utf-8";
+            case "svg" -> "image/svg+xml";
+            case "png" -> "image/png";
+            case "ico" -> "image/x-icon";
+            default -> "application/octet-stream";
+        };
+        byte[] bytes = Files.readAllBytes(target);
+        exchange.getResponseHeaders().set("Content-Type", contentType);
+        // 每次回源校验，避免浏览器启发式缓存导致改版后页面不更新
+        exchange.getResponseHeaders().set("Cache-Control", "no-cache");
+        exchange.sendResponseHeaders(200, bytes.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(bytes);
+        }
+    }
+
+    // ------------------------------------------------------------------ 响应工具
+
+    private static String readBody(HttpExchange exchange) throws IOException {
+        return new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+    }
+
+    private static String orDefault(String v, String def) {
+        return (v == null || v.isBlank()) ? def : v;
+    }
+
+    private static void respond(HttpExchange exchange, int status, String body) throws IOException {
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=utf-8");
+        exchange.sendResponseHeaders(status, bytes.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(bytes);
+        }
+    }
+
+    private static String errorJson(String msg) {
+        Map<String, Object> m = Json.obj();
+        m.put("error", msg);
+        return Json.write(m);
+    }
+
+    private static String okJson(String msg) {
+        Map<String, Object> m = Json.obj();
+        m.put("ok", true);
+        m.put("message", msg);
+        return Json.write(m);
+    }
+}

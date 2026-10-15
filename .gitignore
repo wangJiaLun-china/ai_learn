@@ -1,0 +1,17 @@
+# 含 API Key 的本地配置，不上传
+config.properties
+
+# 构建产物
+build/
+target/
+.gradle/
+out/
+*.class
+
+# 运行时数据（插件、沙箱、事件日志、wiki）
+practice/data/
+
+# IDE / 系统
+.idea/
+*.iml
+.DS_Store

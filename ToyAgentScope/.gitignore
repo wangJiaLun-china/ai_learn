@@ -1,0 +1,9 @@
+build/
+.gradle/
+*.class
+config.properties
+.DS_Store
+.idea/
+*.iml
+# 运行时数据（wiki / 事件日志 / 沙箱 / 插件 / 工作区）
+data/
