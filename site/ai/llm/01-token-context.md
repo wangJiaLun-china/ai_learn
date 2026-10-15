@@ -1,0 +1,53 @@
+# Token 与上下文窗口
+
+> 板块：LLM 基础 · 模型看到的不是「字」，而是 Token；能看多少，由上下文窗口决定。
+
+## Token 是什么 {#token}
+
+- 模型的输入输出都以 **Token** 为单位：分词器（Tokenizer）把文本切成子词片段，再映射成整数 ID。
+- 粗略换算（不同模型的分词器差异很大，以接口返回的 usage 为准）：
+  - OpenAI：英文约 4 个字符 ≈ 1 Token；
+  - DeepSeek 官方给的比例：1 个英文字符 ≈ 0.3 Token，1 个汉字 ≈ 0.6 Token。
+- **计费**按 Token 算，且输入（prompt）和输出（completion）单价不同，输出通常更贵；很多平台对命中缓存的输入另有折扣。
+- 响应里的 `usage` 字段是统计成本、做预算守卫的依据：OpenAI 兼容接口是 `prompt_tokens` / `completion_tokens` / `total_tokens`，Anthropic 是 `input_tokens` / `output_tokens`（另有缓存读写的计数）。推理模型的思考 Token 也计入输出。
+
+## 上下文窗口 {#context-window}
+
+上下文窗口 = 一次请求里 **输入 + 输出** 的 Token 上限。超出会直接报错或被截断。
+
+| 占用项 | 说明 |
+| --- | --- |
+| system 提示词 | 每轮都要发，越长越贵 |
+| 历史消息 | 多轮对话线性增长，是撑爆窗口的主因 |
+| 工具定义 | 每个工具的 JSON Schema 都占 Token，工具越多越贵 |
+| 工具结果 / 检索片段 | RAG、文件读取的内容可能非常大 |
+| 预留输出 | `max_tokens` 要留在窗口内 |
+
+::: warning ⚠️ 模型是无状态的
+模型本身不记得上一轮。「记忆」= 每次请求把历史重新发一遍 —— 所以上下文管理就是记忆管理。
+:::
+
+## 窗口不够怎么办 {#context-management}
+
+- **滑动窗口**：只保留最近 N 轮（[05 记忆](../agent/05-memory)）。
+- **摘要压缩**：把早期对话压成一段摘要，替换原文。
+- **裁剪工具结果**：大结果只留头尾或摘要（[17 ReAct 运行时](../agent/17-react-runtime) 的上下文裁剪）。
+- **按需检索**：知识不常驻上下文，用到时再检索注入（[07 RAG](../agent/07-rag)）。
+- **服务端压缩 / 清理**：部分平台直接提供，例如 Anthropic 的 compaction（接近上限时自动摘要早期上下文）和 context editing（清掉旧的工具结果）。
+- **子代理隔离**：把探索性任务派给独立上下文的子代理，只回传结论（[13 子代理](../agent/13-sub-agent)）。
+
+::: tip 💡 上下文工程
+窗口再大，塞得越多注意力越分散、越贵、越慢。「放什么进上下文」本身就是 Agent 设计的核心问题，常被称为**上下文工程（Context Engineering）**。
+:::
+
+## 本仓库里的对应 {#in-repo}
+
+- [05 记忆](../agent/05-memory)：多轮记忆 + 窗口计数
+- [17 ReAct 运行时](../agent/17-react-runtime)：turn/step 循环中的上下文裁剪
+- [15 Loop 运行时](../agent/15-loop-runtime)：Budget Guard（步数 / Token / 时间预算）
+
+## 资料 {#links}
+
+- [OpenAI Chat Completions API 参考](https://platform.openai.com/docs/api-reference/chat/create)（`usage` 字段）
+- [DeepSeek：Token 用量计算](https://api-docs.deepseek.com/quick_start/token_usage)
+- [Anthropic：Context windows](https://platform.claude.com/docs/en/build-with-claude/context-windows)
